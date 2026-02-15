@@ -2,6 +2,7 @@ import User from "../models/user.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateSecretKey, generateAnonymousId } from "../utils/identity.js";
+import cloudinary from "../lib/cloudinary.js";
 
 // SIGNUP → generate secretKey & anonymousId unik
 export const signup = async (req, res) => {
@@ -113,26 +114,29 @@ export const checkAuth = async (req, res) => {
   }
 };
 
-// @desc    Update display name
-// @route   PUT /api/auth/update-profile
+
+// @desc    Update profile picture
+// @route   PUT /api/auth/update-profile-pic
 export const updateProfile = async (req, res) => {
   try {
-    const { displayName } = req.body;
+    const { profilePic } = req.body;
     const userId = req.user._id;
 
-    if (!displayName) {
-      return res.status(400).json({ message: 'Display name required' });
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile picture is required" });
     }
 
+    // Upload ke cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(profilePic);
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { displayName },
+      { profilePic: uploadResponse.secure_url },
       { new: true }
     ).select('-secretHash');
 
     res.json(updatedUser);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error("Error updating profile picture:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
