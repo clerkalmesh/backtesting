@@ -22,7 +22,14 @@ export const signup = async (req, res) => {
     await newUser.save();
 
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
-    res.cookie("jwt", token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", maxAge: 7*24*60*60*1000 });
+    // Saat login dan signup
+res.cookie('jwt', token, {
+  httpOnly: true,
+  secure: true,                          // wajib true karena HTTPS di Railway
+  sameSite: 'none',                       // izinkan cross-origin (Vercel → Railway)
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/',
+});
 
     res.status(201).json({
       _id: newUser._id,
@@ -66,12 +73,14 @@ export const login = async (req, res) => {
       expiresIn: '7d',
     });
 
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    // Saat login dan signup
+res.cookie('jwt', token, {
+  httpOnly: true,
+  secure: true,                          // wajib true karena HTTPS di Railway
+  sameSite: 'none',                       // izinkan cross-origin (Vercel → Railway)
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/',
+});
 
     res.json({
       _id: foundUser._id,
