@@ -16,6 +16,8 @@ export const sendGlobalMessage = async (req, res) => {
     const { text, image } = req.body;
     const senderId = req.user._id;
     const senderName = req.user.displayName || "Anonymous";
+    const senderAnonymousId = req.user.anonymousId;
+    const senderProfilePic = req.user.profilePic || "";
 
     let imageUrl;
     if (image) {
@@ -26,17 +28,18 @@ export const sendGlobalMessage = async (req, res) => {
     const newMessage = new GroupMessage({
       senderId,
       senderName,
+      senderAnonymousId,
+      senderProfilePic,
       text,
       image: imageUrl,
     });
     await newMessage.save();
 
-    // Emit via socket (io sudah di-export, kita bisa panggil dari sini)
-    // Tapi lebih baik konsisten: kirim via socket event di handler socket.
-    // Untuk HTTP, kita bisa return saja, client akan menambahkan via socket.
-    // Atau kita emit juga di sini:
-    // const io = req.app.get('io'); // jika kita set io di app
-    // Tapi kita akan gunakan socket event saja.
+    // Emit via socket (pastikan io sudah disimpan di app)
+    const io = req.app.get("io");
+    if (io) {
+      io.to("global").emit("newGlobalMessage", newMessage);
+    }
 
     res.status(201).json(newMessage);
   } catch (error) {

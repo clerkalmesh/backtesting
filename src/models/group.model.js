@@ -11,6 +11,14 @@ const groupMessageSchema = new mongoose.Schema(
       type: String,
       default: "Anonymous",
     },
+    senderAnonymousId: {
+      type: String,
+      required: true,
+    },
+    senderProfilePic: {
+      type: String,
+      default: "",
+    },
     text: {
       type: String,
     },

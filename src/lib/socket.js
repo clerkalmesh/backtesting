@@ -4,6 +4,7 @@ import express from "express";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import GroupMessage from "../models/group.model.js"; // tambahkan import
 
 const app = express();
 const server = http.createServer(app);
@@ -19,7 +20,7 @@ const userSocketMap = {}; // {userId: socketId}
 
 export const getReceiverSocketId = (userId) => userSocketMap[userId];
 
-// Middleware autentikasi socket
+// Middleware autentikasi socket (tambah data user ke socket)
 io.use(async (socket, next) => {
   try {
     const cookies = socket.handshake.headers.cookie;
@@ -40,6 +41,9 @@ io.use(async (socket, next) => {
     }
 
     socket.userId = user._id.toString();
+    socket.userName = user.displayName || "Anonymous";
+    socket.anonymousId = user.anonymousId;
+    socket.profilePic = user.profilePic || "";
     next();
   } catch (error) {
     console.error("Socket auth error:", error.message);
@@ -52,28 +56,37 @@ io.on("connection", (socket) => {
 
   userSocketMap[socket.userId] = socket.id;
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
-  
-    // 🔥 Join room global
+
   socket.join("global");
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-  // 📨 Event: kirim pesan global
+  // Event kirim pesan global
   socket.on("sendGlobalMessage", async (data) => {
     try {
       const { text, image } = data;
       const senderId = socket.userId;
       const senderName = socket.userName;
+      const senderAnonymousId = socket.anonymousId;
+      const senderProfilePic = socket.profilePic;
 
-      // Simpan ke database
+      let imageUrl;
+      if (image) {
+        // Upload ke cloudinary jika diperlukan, atau simpan sebagai base64
+        // const uploadResponse = await cloudinary.uploader.upload(image);
+        // imageUrl = uploadResponse.secure_url;
+        imageUrl = image; // sementara langsung simpan base64
+      }
+
       const newMessage = new GroupMessage({
         senderId,
         senderName,
+        senderAnonymousId,
+        senderProfilePic,
         text,
-        image,
+        image: imageUrl,
       });
       await newMessage.save();
 
-      // Broadcast ke semua user di room global
       io.to("global").emit("newGlobalMessage", newMessage);
     } catch (error) {
       console.error("Error sending global message:", error);
