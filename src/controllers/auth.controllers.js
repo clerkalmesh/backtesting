@@ -119,24 +119,37 @@ export const checkAuth = async (req, res) => {
 // @route   PUT /api/auth/update-profile-pic
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, displayName } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile picture is required" });
+    const updateFields = {};
+
+    // Jika ada profilePic, upload ke Cloudinary
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateFields.profilePic = uploadResponse.secure_url;
     }
 
-    // Upload ke cloudinary
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    // Jika ada displayName (bisa string kosong, tapi kita anggap valid)
+    if (displayName !== undefined) {
+      updateFields.displayName = displayName;
+    }
+
+    // Jika tidak ada field yang diupdate
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ message: "Tidak ada data yang diupdate" });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      updateFields,
       { new: true }
     ).select('-secretHash');
 
     res.json(updatedUser);
   } catch (error) {
-    console.error("Error updating profile picture:", error);
+    console.error("Error updating profile:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
